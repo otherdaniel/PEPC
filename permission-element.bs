@@ -21,6 +21,10 @@ Abstract: A `<permission>` HTML element to request browser permissions in-page.
 # Disambiguation between multiple definitions with the same text:
 spec:infra; type:dfn; text:user agent
 spec:css21; type:dfn; text:viewport
+spec:css21; type:dfn; text:specified value
+spec:css21; type:dfn; text:computed value
+spec:css21; type:dfn; text:inherited value
+spec:css21; type:dfn; text:inherit
 spec:css21; type:property; text:color
 spec:css21; type:property; text:background-color
 spec:css21; type:property; text:font-size
@@ -593,33 +597,19 @@ the label itself). The page can also select a locale for the text via the
 
 ## Styling ## {#style}
 
-A <{permission}> element is expected to render with the following styles:
+A <{permission}> element puts contraints on a number of styles. These come in
+three flavours:
 
-<pre class="highlight lang-css">
-@namespace "http://www.w3.org/1999/xhtml";
-permission {
-  opacity: 1.0;
-  line-height: normal;
-  whitespace: nowrap;
-  user-select: none;
-  appearance: auto;
+1. If the condition isn't met, the <{permission}> element in deactivated.
+1. A user-agent defined stylesheet enforces certain styling.
+1. The user-agent enforces bounds on additional styles, that cannot be easily
+    expressed in CSS. (Although they could, if one imagines the CSS cascade
+    to give access to the computed style of an element as input to standard
+    CSS rules.)
 
-  outline-offset: clamp(0, inherit, none); /* No negative outline-offsets. */
-  font-weight: clamp(200, inherit, none);  /* No font-weights below 200. */
-  word-spacing: clamp(0, inerhit, 0.5em);  /* Word-spacing between 0..0.5em */
-  letter-spacing: clamp(-0.05em, inherit, 0.2em);  /* Letter spacing between -0.05..0.2em */
+### Conditions that Deactivate the Element ### {#style-blockers}
 
-  /*
-   * Below, we assume that, if no value is specified, this will clamp to the
-   * minimum value, thus effectively providing a default, too.
-   */
-  min-height: clamp(1em, inherit, none);
-  max-height: clamp(none, inherit, 3em);
-}
-</pre>
-
-Additionally, a <{permission}> element puts contraints on a number of
-additional styles. If one of these conditions is not met, then a
+If one of these conditions is not met, then a
 [=add a temporary blocker|temporary blocker is added=] with type
 {{PermissionElementBlockerReason/style_invalid}}.
 
@@ -630,30 +620,71 @@ additional styles. If one of these conditions is not met, then a
   Alpha has to be 1.
 
 'font-size':
-  Must be set larger or equal than ''font-size/small'' and less than or equal
+  If [=specified value=] is expressed as <a>&lt;relative-size&gt;</a>&#x3a;
+  <br>
+  Must be set larger than or equal to ''font-size/small'' and less than or equal
   to ''font-size/xx-large''.
+  <br>
+  Otherwise, the [=computed value=] must be larger than or equal to the
+  [=computed value=] for ''font-size/small'' and less than or equal to the
+  [=computed value=] of ''font-size/xx-large''.
+
 </pre>
+
+### User-Agent Defined Stylesheet ### {#style-stylesheet}
+
+A <{permission}> element is expected to render with the following styles:
+
+<pre class="highlight lang-css">
+@namespace "http://www.w3.org/1999/xhtml";
+permission {
+  opacity: 1.0;
+  line-height: normal;
+  whitespace: nowrap;
+  user-select: none;
+  appearance: auto;
+}
+</pre>
+
+### User-Agent Define Style Bounds ### {#style-style-bounds}
+
+The style bounds are explained below.
+
+If one imagines that the [=computed value=] of an element could be accessed
+like the inherited value of an element can via the [=inherit=] keyword,
+then the following sheet would express the style bounds:
+
+<pre class="highlight lang-css">
+@namespace "http://www.w3.org/1999/xhtml";
+permission {
+  outline-offset: clamp(0, computed, none); /* No negative outline-offsets. */
+  font-weight: clamp(200, computed, none);  /* No font-weights below 200. */
+  word-spacing: clamp(0, computed, 0.5em);  /* Word-spacing between 0..0.5em */
+  letter-spacing: clamp(-0.05em, commputed, 0.2em);  /* Letter spacing between -0.05..0.2em */
+
+  /*
+   * Below, we assume that, if no value is specified, this will clamp to the
+   * minimum value, thus effectively providing a default, too.
+   */
+  min-height: clamp(1em, computed, none);
+  max-height: clamp(none, computed, 3em);
+
+  margin: clamp(4px, computed, none);
+  font-style: if(computed = "normal" or computed = "italic", computed, "normal");
+  display: if (computed = "inline-block" or computed = "none", computed, "inline-block");
+
+}
+</pre>
+
+ISSUE: Rewrite based on CSS4 cascade, https://www.w3.org/TR/css-cascade-4/#defaulting-keywords
+ISSUE: Rewrite max-width ff. with two tables, based on border condition. Ideally condition based on https://drafts.csswg.org/css-conditional-values-1/
+
 
 ISSUE: font-size: Explainer says, "Zoom will be taken into account when computing font-size." I have no idea what that means with absolute font sizes.
 
 The following conditions on the style are resolved by modifying the style:
 
 <pre class="simpledef">
-'margin', and any margin-* properties:
-  Values under `4px` will be corrected to `4px`.
-  This is done to help prevent false positives for the logic that detects the
-  element being covered by something else.
-
-'font-style':
-  Defaults to ''font-style/normal''. If values other than
-  ''font-style/normal'' or ''font-style/italic'' are specified,
-  the default will be used instead.
-
-'display':
-  Defaults to ''display/inline-block''. If values other than
-  ''display/inline-block'' or ''display/none'' are specified, the default will
-  be used again.
-
 'min-width':
   Defaults to ''width/fit-content''. If a value exists, the <<max()>> of
   ''width/fit-content'' and the computed value is used.
