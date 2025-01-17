@@ -529,7 +529,7 @@ Issue: What about event handlers?
 The HTMLPermissionElement's <dfn for="HTMLPermissionElement">IntersectionObserver callback</dfn> implements {{IntersectionObserverCallback}} and runs the following steps:
 
 1. [=Assert=]: The {{IntersectionObserver}}'s {{IntersectionObserver/root}}
-    is the [=Document=]
+    is the [=/document=]
 1. Let |entries| be the value of the first callback parameter, the
     [=/list=] of {{IntersectionObserverEntry|intersection observer entries}}.
 1. [=Assert=]: |entries| is not [=list/is empty|empty=].
@@ -597,8 +597,8 @@ the label itself). The page can also select a locale for the text via the
 
 ## Styling ## {#style}
 
-A <{permission}> element puts contraints on a number of styles. These come in
-three flavours:
+A <{permission}> element puts contraints on styling applicable to the element.
+These come in three flavours:
 
 1. If the condition isn't met, the <{permission}> element in deactivated.
 1. A user-agent defined stylesheet enforces certain styling.
@@ -648,11 +648,13 @@ permission {
 
 ### User-Agent Define Style Bounds ### {#style-style-bounds}
 
-The style bounds are explained below.
+A <{permission}> element defines several bounds on styles. For example, we want
+the font size are constraints on the  The style bounds are explained below.
 
-If one imagines that the [=computed value=] of an element could be accessed
-like the inherited value of an element can via the [=inherit=] keyword,
-then the following sheet would express the style bounds:
+For notational convenience, we imagine that the [=computed value=] of an element
+could be accessed in CSS rules like the inherited value of an element can via
+the [=inherit=] keyword. Then the following sheet would express the style
+bounds:
 
 <pre class="highlight lang-css">
 @namespace "http://www.w3.org/1999/xhtml";
@@ -662,54 +664,48 @@ permission {
   word-spacing: clamp(0, computed, 0.5em);  /* Word-spacing between 0..0.5em */
   letter-spacing: clamp(-0.05em, commputed, 0.2em);  /* Letter spacing between -0.05..0.2em */
 
-  /*
-   * Below, we assume that, if no value is specified, this will clamp to the
-   * minimum value, thus effectively providing a default, too.
-   */
   min-height: clamp(1em, computed, none);
   max-height: clamp(none, computed, 3em);
+  min-width: clamp(none, computed, calc(fit-content));
 
   margin: clamp(4px, computed, none);
   font-style: if(computed = "normal" or computed = "italic", computed, "normal");
   display: if (computed = "inline-block" or computed = "none", computed, "inline-block");
-
 }
 </pre>
 
-ISSUE: Rewrite based on CSS4 cascade, https://www.w3.org/TR/css-cascade-4/#defaulting-keywords
-ISSUE: Rewrite max-width ff. with two tables, based on border condition. Ideally condition based on https://drafts.csswg.org/css-conditional-values-1/
+Additionally, some rules apply based on conditions not easily expressible as
+CSS.
 
+If 'height' is `auto`, then apply:
 
-ISSUE: font-size: Explainer says, "Zoom will be taken into account when computing font-size." I have no idea what that means with absolute font sizes.
-
-The following conditions on the style are resolved by modifying the style:
-
-<pre class="simpledef">
-'min-width':
-  Defaults to ''width/fit-content''. If a value exists, the <<max()>> of
-  ''width/fit-content'' and the computed value is used.
-
-'max-width':
-  Defaults to 3 * ''width/fit-content''.
-  If a value exists, <<min()>> between the default and the inherited value
-  will be used. However this does not apply if the element has a border with
-  a width of at least 1px and a color that has a contrast ratio with the
-  background-color of at least 3 and alpha of 1.
-
-'padding-top':
-  If 'height' is `auto`, use 'padding-top'&#x3a; clamp(1em, inherit, none); 'padding-bottom'&#x3a; calc(padding-top);
-  Otherwise, ignore.
-
-'padding-left':
-  If 'width' is `auto`, use 'padding-left'&#x3a; clamp(none, inherit, 5em); 'padding-right'&#x3a; calc(padding-left);
-  Otherwise, ...
-
+<pre class="highlight lang-css">
+@namespace "http://www.w3.org/1999/xhtml";
+permission {
+  padding-top: clamp(1em, computed, none);
+  padding-bottom: calc(padding-top);
+}
 </pre>
 
-ISSUE: Why the complicated 'max-width' rule?
+If 'width' is `auto`, then apply:
 
-ISSUE: 'padding-left' description said: <i>"Otherwise, This does not apply
-under the same border conditions as 'max-width', except 'padding-right'
-with still be set to the value of 'padding-left'."</i> I can't parse that.
+<pre class="highlight lang-css">
+@namespace "http://www.w3.org/1999/xhtml";
+permission {
+  padding-left: clamp(none, computed, 5em);
+  padding-right: calc(padding-left);
+}
+</pre>
+
+If the element does not have all of the following: A border width of at
+least `1px`, a color to background-color contrast ratio of at least 3, and
+alpha of 1, then apply:
+
+<pre class="highlight lang-css">
+@namespace "http://www.w3.org/1999/xhtml";
+permission {
+  max-width: clamp(none, computed, calc(3 * fit-content));
+}
+</pre>
 
 # Security & Privacy Considerations # {#secpriv}
